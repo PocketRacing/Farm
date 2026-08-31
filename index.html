@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Симулятор Фермера</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#101611;color:#eee;font-family:Arial,sans-serif;
+}
+button{
+ border:0;border-radius:10px;padding:12px 15px;background:#304d32;color:white;
+ font-weight:bold;cursor:pointer;margin:3px;transition:.15s
+}
+button:hover{background:#416b44;transform:translateY(-1px)}
+button:active{transform:scale(.98)}
+.app{max-width:1250px;margin:auto;min-height:100vh;background:#172019}
+header{
+ position:sticky;top:0;z-index:10;background:#18251a;border-bottom:1px solid #314432;
+ padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px
+}
+.logo{font-size:22px;font-weight:900;color:#8fd35b}
+.logo small{display:block;color:#879689;font-size:11px;font-weight:normal}
+.money{font-size:19px;color:#ffd45a;font-weight:bold}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 70px)}
+nav{background:#111811;padding:12px;border-right:1px solid #29382b}
+nav button{display:block;width:100%;text-align:left;background:#1c281d;margin:4px 0}
+nav button.active{background:#587d3d}
+main{padding:18px}
+.page{display:none}
+.page.active{display:block}
+h1{margin-top:0}
+h2{margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.card{
+ background:#202d22;border:1px solid #344736;border-radius:14px;padding:15px
+}
+.card h3{margin:0 0 8px}
+.stat{font-size:25px;font-weight:bold}
+.muted{color:#91a091}
+.good{color:#7ddd72}
+.bad{color:#ff7272}
+.gold{color:#ffd45a}
+.progress{height:10px;background:#0c100d;border-radius:20px;overflow:hidden;margin:8px 0}
+.progress div{height:100%;background:#79b84b}
+.bar{
+ display:flex;justify-content:space-between;align-items:center;
+ padding:10px 12px;background:#202c21;border-radius:10px;margin:7px 0
+}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:10px;border-bottom:1px solid #344034;text-align:left}
+.tag{display:inline-block;padding:4px 8px;border-radius:8px;background:#344d36;font-size:12px}
+.log{
+ max-height:260px;overflow:auto;background:#0d120e;border-radius:10px;padding:10px;
+ font-size:13px
+}
+.log div{padding:6px;border-bottom:1px solid #202820}
+.field{
+ background:linear-gradient(#5a793c,#405d2e);
+ border-radius:14px;padding:15px;color:white;min-height:160px;
+ display:flex;flex-direction:column;justify-content:space-between
+}
+.field.ready{background:linear-gradient(#759b48,#527632)}
+.field.empty{background:linear-gradient(#755634,#573c27)}
+.action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px}
+.modal{
+ display:none;position:fixed;inset:0;background:#000a;z-index:50;
+ align-items:center;justify-content:center;padding:15px
+}
+.modal.show{display:flex}
+.modalbox{
+ width:min(600px,100%);max-height:90vh;overflow:auto;background:#1b261c;
+ border:1px solid #405440;border-radius:16px;padding:20px
+}
+.close{float:right;background:#572d2d}
+.toast{
+ position:fixed;right:15px;bottom:15px;background:#253927;padding:13px 17px;
+ border-radius:12px;box-shadow:0 5px 25px #0008;display:none;z-index:100
+}
+.toast.show{display:block}
+.big{font-size:34px}
+.weather{font-size:30px}
+.map{
+ display:grid;grid-template-columns:repeat(4,1fr);gap:7px
+}
+.mapcell{
+ min-height:100px;border-radius:10px;padding:10px;background:#29482b;
+ border:1px solid #466749
+}
+.mapcell.water{background:#234b61}
+.mapcell.town{background:#57462d}
+.mapcell.forest{background:#1b3823}
+.mapcell.factory{background:#414141}
+@media(max-width:750px){
+ header{position:relative}
+ .layout{display:block}
+ nav{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-right:0}
+ nav button{font-size:11px;padding:9px;margin:0}
+ main{padding:10px}
+ .table{font-size:13px}
+ .map{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+<header>
+ <div class="logo">🌾 FARMER SIMULATOR <small>Большая ферма</small></div>
+ <div>
+   <span id="dayText">День 1</span> ·
+   <span id="timeText">06:00</span>
+   <span class="money" id="moneyText">250 000 ₽</span>
+ </div>
+</header>
+
+<div class="layout">
+
+<nav>
+ <button class="active" onclick="showPage('home',this)">🏠 Главная</button>
+ <button onclick="showPage('farm',this)">🌾 Поля</button>
+ <button onclick="showPage('animals',this)">🐄 Животные</button>
+ <button onclick="showPage('garage',this)">🚜 Гараж</button>
+ <button onclick="showPage('shop',this)">🏪 Магазин</button>
+ <button onclick="showPage('market',this)">💰 Рынок</button>
+ <button onclick="showPage('workers',this)">👨‍🌾 Работники</button>
+ <button onclick="showPage('map',this)">🗺️ Карта</button>
+ <button onclick="showPage('quests',this)">📋 Задания</button>
+ <button onclick="showPage('stats',this)">📊 Статистика</button>
+ <button onclick="showPage('save',this)">💾 Сохранение</button>
+</nav>
+
+<main>
+
+<!-- HOME -->
+<section id="home" class="page active">
+<h1>🏠 Твоя ферма</h1>
+
+<div class="grid">
+ <div class="card">
+  <div class="muted">Баланс</div>
+  <div class="stat gold" id="homeMoney">250 000 ₽</div>
+ </div>
+ <div class="card">
+  <div class="muted">Репутация</div>
+  <div class="stat" id="rep">10</div>
+ </div>
+ <div class="card">
+  <div class="muted">Уровень</div>
+  <div class="stat" id="level">1</div>
+ </div>
+ <div class="card">
+  <div class="muted">Опыт</div>
+  <div id="xpText">0 / 100 XP</div>
+  <div class="progress"><div id="xpBar" style="width:0%"></div></div>
+ </div>
+</div>
+
+<div class="grid" style="margin-top:12px">
+ <div class="card">
+  <h3>🌤️ Погода</h3>
+  <div class="weather" id="weatherIcon">☀️</div>
+  <b id="weatherName">Солнечно</b>
+  <div class="muted" id="weatherInfo">+21°C · Осадков нет</div>
+ </div>
+
+ <div class="card">
+  <h3>📅 Календарь</h3>
+  <div id="seasonText">Весна</div>
+  <div class="muted" id="dateText">1 день сезона</div>
+  <button onclick="nextHour()">⏩ Следующий час</button>
+  <button onclick="nextDay()">🌅 Следующий день</button>
+ </div>
+
+ <div class="card">
+  <h3>📦 Склад</h3>
+  <div>Пшеница: <b id="wheat">0 т</b></div>
+  <div>Кукуруза: <b id="corn">0 т</b></div>
+  <div>Подсолнечник: <b id="sunflower">0 т</b></div>
+  <div>Картофель: <b id="potato">0 т</b></div>
+ </div>
+</div>
+
+<div class="card" style="margin-top:12px">
+<h3>⚡ Быстрые действия</h3>
+<div class="action-grid">
+<button onclick="showPage('farm')">🌾 Работать на поле</button>
+<button onclick="showPage('garage')">🚜 Гараж</button>
+<button onclick="showPage('animals')">🐄 Животные</button>
+<button onclick="showPage('market')">💰 Продать урожай</button>
+<button onclick="openBank()">🏦 Банк</button>
+<button onclick="randomEvent()">🎲 Случайное событие</button>
+</div>
+</div>
+
+<div class="card" style="margin-top:12px">
+<h3>📜 Журнал</h3>
+<div class="log" id="log"></div>
+</div>
+</section>
+
+<!-- FARM -->
+<section id="farm" class="page">
+<h1>🌾 Поля</h1>
+<div class="card">
+ <b>Общая площадь:</b> <span id="totalArea">12 га</span> ·
+ <b>Свободно:</b> <span id="freeArea">12 га</span>
+</div>
+<div class="grid" id="fields" style="margin-top:12px"></div>
+</section>
+
+<!-- ANIMALS -->
+<section id="animals" class="page">
+<h1>🐄 Животные</h1>
+<div class="grid" id="animalCards"></div>
+<div class="card" style="margin-top:12px">
+ <h3>🥛 Продукция</h3>
+ <div id="products"></div>
+</div>
+</section>
+
+<!-- GARAGE -->
+<section id="garage" class="page">
+<h1>🚜 Гараж</h1>
+<div class="grid" id="vehicles"></div>
+</section>
+
+<!-- SHOP -->
+<section id="shop" class="page">
+<h1>🏪 Магазин</h1>
+<div class="grid" id="shopItems"></div>
+</section>
+
+<!-- MARKET -->
+<section id="market" class="page">
+<h1>💰 Рынок</h1>
+<div class="card">
+ <p>Цены меняются каждый день.</p>
+ <table class="table">
+ <thead><tr><th>Товар</th><th>На складе</th><th>Цена/т</th><th></th></tr></thead>
+ <tbody id="marketTable"></tbody>
+ </table>
+</div>
+</section>
+
+<!-- WORKERS -->
+<section id="workers" class="page">
+<h1>👨‍🌾 Работники</h1>
+<div class="grid" id="workerCards"></div>
+</section>
+
+<!-- MAP -->
+<section id="map" class="page">
+<h1>🗺️ Карта региона</h1>
+<div class="card">
+<div class="map">
+ <div class="mapcell forest">🌲<br>Лес</div>
+ <div class="mapcell">🌾<br>Поле №1</div>
+ <div class="mapcell">🌾<br>Поле №2</div>
+ <div class="mapcell town">🏘️<br>Деревня</div>
+
+ <div class="mapcell">🚜<br>Ферма</div>
+ <div class="mapcell">🌾<br>Поле №3</div>
+ <div class="mapcell factory">🏭<br>Мельница</div>
+ <div class="mapcell water">🌊<br>Река</div>
+
+ <div class="mapcell forest">🌲<br>Лес</div>
+ <div class="mapcell town">⛽<br>АЗС</div>
+ <div class="mapcell factory">🏭<br>Элеватор</div>
+ <div class="mapcell">🌾<br>Поле №4</div>
+</div>
+</div>
+</section>
+
+<!-- QUESTS -->
+<section id="quests" class="page">
+<h1>📋 Задания</h1>
+<div class="grid" id="questCards"></div>
+</section>
+
+<!-- STATS -->
+<section id="stats" class="page">
+<h1>📊 Статистика</h1>
+<div class="grid" id="statsCards"></div>
+</section>
+
+<!-- SAVE -->
+<section id="save" class="page">
+<h1>💾 Сохранение</h1>
+<div class="card">
+<p>Игра автоматически сохраняется после важных действий.</p>
+<button onclick="saveGame()">💾 Сохранить сейчас</button>
+<button onclick="loadGame()">📂 Загрузить</button>
+<button onclick="resetGame()">🗑️ Новая ферма</button>
+</div>
+</section>
+
+</main>
+</div>
+</div>
+
+<div class="modal" id="modal">
+ <div class="modalbox">
+  <button class="close" onclick="closeModal()">✕</button>
+  <div id="modalContent"></div>
+ </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const defaultState={
+ money:250000,
+ day:1,
+ hour:6,
+ season:"Весна",
+ seasonDay:1,
+ xp:0,
+ level:1,
+ reputation:10,
+ totalEarned:0,
+ totalSold:0,
+ hectares:12,
+ usedHectares:0,
+ fuel:1000,
+ wheat:0,
+ corn:0,
+ sunflower:0,
+ potato:0,
+ milk:0,
+ eggs:0,
+ wool:0,
+ products:[],
+ fields:[
+  {id:1,size:3,crop:null,stage:0,soil:80},
+  {id:2,size:3,crop:null,stage:0,soil:80},
+  {id:3,size:3,crop:null,stage:0,soil:80},
+  {id:4,size:3,crop:null,stage:0,soil:80}
+ ],
+ animals:{
+  cow:{count:3,price:18000,feed:2,product:"milk"},
+  chicken:{count:12,price:1500,feed:.2,product:"eggs"},
+  sheep:{count:4,price:12000,feed:1,product:"wool"}
+ },
+ vehicles:[
+  {id:"mtz",name:"МТЗ-82",icon:"🚜",price:0,owned:true,fuel:80,power:81,condition:100},
+  {id:"harvester",name:"Нива СК-5",icon:"🌾",price:950000,owned:false,fuel:0,power:120,condition:100},
+  {id:"truck",name:"КамАЗ-65115",icon:"🚛",price:1450000,owned:false,fuel:0,power:280,condition:100},
+  {id:"sprayer",name:"Опрыскиватель ОП-2000",icon:"💦",price:420000,owned:false,fuel:0,power:0,condition:100}
+ ],
+ workers:[
+  {id:1,name:"Иван",skill:65,salary:2500,hired:false},
+  {id:2,name:"Сергей",skill:80,salary:3500,hired:false},
+  {id:3,name:"Алексей",skill:92,salary:5000,hired:false}
+ ],
+ inventory:{
+  wheatSeed:10,
+  cornSeed:10,
+  sunflowerSeed:5,
+  potatoSeed:5,
+  fertilizer:10,
+  feed:30
+ }
+};
+
+let state=JSON.parse(JSON.stringify(defaultState));
+
+const crops={
+ wheat:{name:"Пшеница",icon:"🌾",seed:"wheatSeed",days:3,yield:2.4,price:14500},
+ corn:{name:"Кукуруза",icon:"🌽",seed:"cornSeed",days:4,yield:3,price:17000},
+ sunflower:{name:"Подсолнечник",icon:"🌻",seed:"sunflowerSeed",days:5,yield:2,price:28000},
+ potato:{name:"Картофель",icon:"🥔",seed:"potatoSeed",days:4,yield:4,price:12000}
+};
+
+const weatherTypes=[
+ ["☀️","Солнечно","+21°C"],
+ ["🌤️","Переменная облачность","+18°C"],
+ ["🌧️","Дождь","+13°C"],
+ ["⛈️","Гроза","+11°C"],
+ ["☁️","Облачно","+15°C"]
+];
+
+let weather=weatherTypes[0];
+
+function fmt(n){
+ return Math.round(n).toLocaleString("ru-RU");
+}
+
+function log(text){
+ let el=document.getElementById("log");
+ let d=document.createElement("div");
+ d.innerHTML="<span class='muted'>"+time()+"</span> — "+text;
+ el.prepend(d);
+ if(el.children.length>60)el.lastChild.remove();
+}
+
+function time(){
+ return "Д"+state.day+" "+String(state.hour).padStart(2,"0")+":00";
+}
+
+function toast(text){
+ let t=document.getElementById("toast");
+ t.textContent=text;
+ t.classList.add("show");
+ setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+function showPage(id,btn){
+ document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+ document.getElementById(id).classList.add("active");
+ document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+ if(btn)btn.classList.add("active");
+ render();
+}
+
+function addMoney(n){
+ state.money+=n;
+ if(n>0)state.totalEarned+=n;
+}
+
+function addXP(n){
+ state.xp+=n;
+ while(state.xp>=state.level*100){
+  state.xp-=state.level*100;
+  state.level++;
+  state.reputation++;
+  log("🎉 Новый уровень: "+state.level+"!");
+ }
+}
+
+function spend(n){
+ if(state.money<n){
+  toast("Недостаточно денег!");
+  return false;
+ }
+ state.money-=n;
+ return true;
+}
+
+function nextHour(){
+ state.hour++;
+ if(state.hour>=24){
+  state.hour=0;
+  nextDay();
+  return;
+ }
+ if(state.hour%4===0)animalProduction();
+ render();
+ saveGame(true);
+}
+
+function nextDay(){
+ state.day++;
+ state.seasonDay++;
+
+ if(state.seasonDay>30){
+  state.seasonDay=1;
+  const seasons=["Весна","Лето","Осень","Зима"];
+  let i=seasons.indexOf(state.season);
+  state.season=seasons[(i+1)%4];
+  log("🍂 Наступил новый сезон: "+state.season);
+ }
+
+ state.hour=6;
+ weather=weatherTypes[Math.floor(Math.random()*weatherTypes.length)];
+
+ growFields();
+ animalProduction();
+ dailyExpenses();
+ randomDailyEvent();
+
+ log("🌅 Начался день "+state.day);
+ render();
+ saveGame(true);
+}
+
+function growFields(){
+ state.fields.forEach(f=>{
+  if(f.crop && f.stage<100){
+   let bonus=weather[1]=="Дождь"?1.5:1;
+   f.stage+=Math.round((100/crops[f.crop].days)*bonus);
+   if(f.stage>100)f.stage=100;
+  }
+ });
+}
+
+function animalProduction(){
+ let a=state.animals;
+ state.milk+=a.cow.count*0.5;
+ state.eggs+=a.chicken.count*0.08;
+ state.wool+=a.sheep.count*0.05;
+}
+
+function dailyExpenses(){
+ let salary=state.workers.filter(x=>x.hired).reduce((a,b)=>a+b.salary,0);
+ if(salary){
+  state.money-=salary;
+  log("💸 Зарплата работникам: -"+fmt(salary)+" ₽");
+ }
+}
+
+function randomDailyEvent(){
+ let r=Math.random();
+ if(r<.12){
+  addMoney(5000);
+  log("🎁 Сосед помог с хозяйством. +5 000 ₽");
+ }else if(r<.20){
+  state.reputation++;
+  log("🤝 Ты помог соседней ферме. Репутация +1");
+ }else if(r<.26){
+  state.fuel=Math.max(0,state.fuel-50);
+  log("⚠️ Обнаружена утечка топлива. -50 л");
+ }
+}
+
+function plantField(id,crop){
+ let f=state.fields.find(x=>x.id==id);
+ let c=crops[crop];
+ let seedNeed=Math.ceil(f.size);
+
+ if(state.inventory[c.seed]<seedNeed){
+  toast("Не хватает семян!");
+  return;
+ }
+
+ state.inventory[c.seed]-=seedNeed;
+ f.crop=crop;
+ f.stage=5;
+ state.usedHectares+=f.size;
+ addXP(10);
+ log("🌱 Засеяно поле №"+id+": "+c.name);
+ render();
+ saveGame();
+}
+
+function fertilize(id){
+ let f=state.fields.find(x=>x.id==id);
+ if(!f.crop){toast("Сначала посей поле");return}
+ if(state.inventory.fertilizer<1){toast("Нет удобрений");return}
+ state.inventory.fertilizer--;
+ f.stage=Math.min(100,f.stage+15);
+ f.soil=Math.min(100,f.soil+10);
+ addXP(5);
+ log("🧪 Поле №"+id+" удобрено");
+ render();
+ saveGame();
+}
+
+function harvest(id){
+ let f=state.fields.find(x=>x.id==id);
+ if(!f.crop||f.stage<100){
+  toast("Урожай ещё не готов");
+  return;
+ }
+ let c=crops[f.crop];
+ let amount=f.size*c.yield*(0.8+Math.random()*.4);
+ state[f.crop]+=amount;
+ log("🚜 Собрано "+amount.toFixed(1)+" т "+c.name);
+ addXP(25);
+ f.crop=null;
+ f.stage=0;
+ state.usedHectares-=f.size;
+ f.soil=Math.max(20,f.soil-8);
+ render();
+ saveGame();
+}
+
+function buySeed(type){
+ const prices={
+  wheatSeed:650,
+  cornSeed:900,
+  sunflowerSeed:1200,
+  potatoSeed:500,
+  fertilizer:1800,
+  feed:900
+ };
+ if(!spend(prices[type]))return;
+ state.inventory[type]++;
+ toast("Куплено!");
+ render();
+ saveGame();
+}
+
+function buyAnimal(type){
+ let a=state.animals[type];
+ if(!spend(a.price))return;
+ a.count++;
+ log("🐄 Куплено животное: "+type);
+ render();
+ saveGame();
+}
+
+function buyVehicle(id){
+ let v=state.vehicles.find(x=>x.id==id);
+ if(v.owned){toast("Уже куплено");return}
+ if(!spend(v.price))return;
+ v.owned=true;
+ v.fuel=100;
+ log("🚜 Куплена техника: "+v.name);
+ addXP(50);
+ render();
+ saveGame();
+}
+
+function repairVehicle(id){
+ let v=state.vehicles.find(x=>x.id==id);
+ let cost=Math.round((100-v.condition)*300);
+ if(cost<=0){toast("Техника исправна");return}
+ if(!spend(cost))return;
+ v.condition=100;
+ log("🔧 "+v.name+" отремонтирован");
+ render();
+ saveGame();
+}
+
+function refuel(id){
+ let v=state.vehicles.find(x=>x.id==id);
+ let need=100-v.fuel;
+ let cost=need*65;
+ if(!spend(cost))return;
+ v.fuel=100;
+ log("⛽ "+v.name+" заправлен");
+ render();
+ saveGame();
+}
+
+function hireWorker(id){
+ let w=state.workers.find(x=>x.id==id);
+ if(w.hired){toast("Работник уже нанят");return}
+ if(state.money<10000){toast("Нужно 10 000 ₽ на оформление");return}
+ state.money-=10000;
+ w.hired=true;
+ log("👨‍🌾 Нанят работник "+w.name);
+ render();
+ saveGame();
+}
+
+function sell(item){
+ let prices={
+  wheat:crops.wheat.price,
+  corn:crops.corn.price,
+  sunflower:crops.sunflower.price,
+  potato:crops.potato.price,
+  milk:90000,
+  eggs:140000,
+  wool:75000
+ };
+ let qty=state[item];
+ if(qty<=0){toast("Нечего продавать");return}
+ let amount=qty*prices[item];
+ state[item]=0;
+ addMoney(amount);
+ state.totalSold+=amount;
+ addXP(Math.min(50,Math.ceil(qty*2)));
+ log("💰 Продано: "+qty.toFixed(1)+" ед. на "+fmt(amount)+" ₽");
+ render();
+ saveGame();
+}
+
+function randomEvent(){
+ let events=[
+  ["🍀","Ты нашёл старую монету в сарае.","money",7500],
+  ["🚜","Сосед попросил помочь с трактором.","money",12000],
+  ["🌧️","Сильный дождь улучшил состояние почвы.","soil",10],
+  ["📦","Поставщик сделал скидку.","money",5000],
+  ["🐄","Корова дала рекордный удой.","milk",15]
+ ];
+ let e=events[Math.floor(Math.random()*events.length)];
+ if(e[2]=="money")addMoney(e[3]);
+ if(e[2]=="soil")state.fields.forEach(x=>x.soil=Math.min(100,x.soil+e[3]));
+ if(e[2]=="milk")state.milk+=e[3];
+ log(e[0]+" "+e[1]+" "+(e[2]=="money"?"+"+fmt(e[3])+" ₽":""));
+ render();
+}
+
+function openBank(){
+ document.getElementById("modalContent").innerHTML=`
+ <h2>🏦 Сельский банк</h2>
+ <p>Текущий баланс: <b class="gold">${fmt(state.money)} ₽</b></p>
+ <button onclick="takeLoan(100000)">Взять 100 000 ₽</button>
+ <button onclick="takeLoan(500000)">Взять 500 000 ₽</button>
+ <p class="muted">Учебная версия: кредиты пока без процентов.</p>`;
+ document.getElementById("modal").classList.add("show");
+}
+
+function takeLoan(n){
+ addMoney(n);
+ log("🏦 Получен кредит "+fmt(n)+" ₽");
+ closeModal();
+ render();
+}
+
+function closeModal(){
+ document.getElementById("modal").classList.remove("show");
+}
+
+function renderFields(){
+ let box=document.getElementById("fields");
+ box.innerHTML="";
+ state.fields.forEach(f=>{
+  let c=f.crop?crops[f.crop]:null;
+  let cls=!c?"empty":f.stage>=100?"ready":"";
+  box.innerHTML+=`
+  <div class="field ${cls}">
+   <div>
+    <b>Поле №${f.id}</b>
+    <span class="tag">${f.size} га</span>
+   </div>
+   <div style="font-size:35px">${c?c.icon:"🟫"}</div>
+   <div>
+    ${c?c.name:"Пустое поле"} · Почва ${f.soil}%
+    ${c?`<div class="progress"><div style="width:${f.stage}%"></div></div>
+    <small>${f.stage>=100?"ГОТОВО К УБОРКЕ":f.stage+"% роста"}</small>`:""}
+   </div>
+   <div>
+    ${!c?`
+    <button onclick="choosePlant(${f.id})">🌱 Посеять</button>
+    `:`
+    <button onclick="fertilize(${f.id})">🧪 Удобрить</button>
+    <button onclick="harvest(${f.id})">🚜 Убрать</button>
+    `}
+   </div>
+  </div>`;
+ });
+}
+
+function choosePlant(id){
+ let html="<h2>🌱 Выбор культуры</h2>";
+ Object.keys(crops).forEach(k=>{
+  let c=crops[k];
+  html+=`<div class="bar">
+   <span>${c.icon} <b>${c.name}</b> · ${c.days} дней · ${c.yield} т/га</span>
+   <button onclick="plantField(${id},'${k}');closeModal()">Посеять</button>
+  </div>`;
+ });
+ document.getElementById("modalContent").innerHTML=html;
+ document.getElementById("modal").classList.add("show");
+}
+
+function renderAnimals(){
+ let box=document.getElementById("animalCards");
+ box.innerHTML="";
+ let data=[
+  ["cow","🐄","Коровы","milk","литров молока"],
+  ["chicken","🐔","Куры","eggs","яиц"],
+  ["sheep","🐑","Овцы","wool","кг шерсти"]
+ ];
+ data.forEach(x=>{
+  let a=state.animals[x[0]];
+  box.innerHTML+=`
+  <div class="card">
+   <div class="big">${x[1]}</div>
+   <h3>${x[2]}</h3>
+   <div class="stat">${a.count}</div>
+   <div class="muted">Цена: ${fmt(a.price)} ₽</div>
+   <p>Корм: ${a.feed}/день</p>
+   <button onclick="buyAnimal('${x[0]}')">➕ Купить</button>
+  </div>`;
+ });
+ document.getElementById("products").innerHTML=`
+  🥛 Молоко: <b>${state.milk.toFixed(1)} л</b><br>
+  🥚 Яйца: <b>${state.eggs.toFixed(1)}</b><br>
+  🧶 Шерсть: <b>${state.wool.toFixed(1)} кг</b>`;
+}
+
+function renderVehicles(){
+ let box=document.getElementById("vehicles");
+ box.innerHTML="";
+ state.vehicles.forEach(v=>{
+  box.innerHTML+=`
+  <div class="card">
+   <div class="big">${v.icon}</div>
+   <h3>${v.name}</h3>
+   <span class="tag">${v.power?v.power+" л.с.":"Навесное"}</span>
+   <p>Состояние: <b>${v.condition}%</b></p>
+   <div class="progress"><div style="width:${v.condition}%"></div></div>
+   <p>Топливо: ${v.fuel}%</p>
+   ${v.owned?
+   `<button onclick="repairVehicle('${v.id}')">🔧 Ремонт</button>
+    <button onclick="refuel('${v.id}')">⛽ Заправить</button>`:
+   `<b class="gold">${fmt(v.price)} ₽</b><br>
+    <button onclick="buyVehicle('${v.id}')">Купить</button>`}
+  </div>`;
+ });
+}
+
+function renderShop(){
+ let items=[
+  ["wheatSeed","🌾","Семена пшеницы",650],
+  ["cornSeed","🌽","Семена кукурузы",900],
+  ["sunflowerSeed","🌻","Семена подсолнечника",1200],
+  ["potatoSeed","🥔","Семена картофеля",500],
+  ["fertilizer","🧪","Удобрения",1800],
+  ["feed","🌾","Корм для животных",900]
+ ];
+ let box=document.getElementById("shopItems");
+ box.innerHTML="";
+ items.forEach(x=>{
+  box.innerHTML+=`
+  <div class="card">
+   <div class="big">${x[1]}</div>
+   <h3>${x[2]}</h3>
+   <div>На складе: <b>${state.inventory[x[0]]}</b></div>
+   <div class="gold">${fmt(x[3])} ₽</div>
+   <button onclick="buySeed('${x[0]}')">Купить 1</button>
+  </div>`;
+ });
+}
+
+function renderMarket(){
+ let arr=[
+  ["wheat","🌾 Пшеница",crops.wheat.price],
+  ["corn","🌽 Кукуруза",crops.corn.price],
+  ["sunflower","🌻 Подсолнечник",crops.sunflower.price],
+  ["potato","🥔 Картофель",crops.potato.price],
+  ["milk","🥛 Молоко",90000],
+  ["eggs","🥚 Яйца",140000],
+  ["wool","🧶 Шерсть",75000]
+ ];
+ document.getElementById("marketTable").innerHTML=arr.map(x=>`
+ <tr>
+  <td>${x[1]}</td>
+  <td>${typeof state[x[0]]=="number"?state[x[0]].toFixed(1):0}</td>
+  <td class="gold">${fmt(x[2])} ₽</td>
+  <td><button onclick="sell('${x[0]}')">Продать всё</button></td>
+ </tr>`).join("");
+}
+
+function renderWorkers(){
+ let box=document.getElementById("workerCards");
+ box.innerHTML="";
+ state.workers.forEach(w=>{
+  box.innerHTML+=`
+  <div class="card">
+   <h3>👨‍🌾 ${w.name}</h3>
+   <div>Навык: <b>${w.skill}%</b></div>
+   <div>Зарплата: ${fmt(w.salary)} ₽/день</div>
+   <div class="progress"><div style="width:${w.skill}%"></div></div>
+   ${w.hired?
+   "<span class='tag'>НАНЯТ</span>":
+   `<button onclick="hireWorker(${w.id})">Нанять · 10 000 ₽</button>`}
+  </div>`;
+ });
+}
+
+function renderQuests(){
+ let quests=[
+  ["🌱 Первый урожай","Посей хотя бы одно поле","Посей поле",state.usedHectares>0,5000,20],
+  ["🚜 Механизатор","Купи дополнительную технику","Купить технику",state.vehicles.some(x=>x.owned&&x.price>0),25000,50],
+  ["🐄 Животновод","Заведи 10 животных","Купить животных",Object.values(state.animals).reduce((a,b)=>a+b.count,0)>=10,15000,30],
+  ["💰 Торговец","Продай продукции на 100 000 ₽","Продать урожай",state.totalSold>=100000,20000,50]
+ ];
+ document.getElementById("questCards").innerHTML=quests.map((q,i)=>`
+ <div class="card">
+  <h3>${q[0]}</h3>
+  <p>${q[1]}</p>
+  <div class="${q[3]?'good':''}">${q[3]?"✅ Выполнено":"⏳ "+q[2]}</div>
+  <p class="gold">Награда: ${fmt(q[4])} ₽ + ${q[5]} XP</p>
+  ${q[3]?`<button onclick="claimQuest(${i})">Получить награду</button>`:""}
+ </div>`).join("");
+}
+
+let claimedQuests=[];
+
+function claimQuest(i){
+ if(claimedQuests.includes(i)){toast("Уже получено");return}
+ let rewards=[[5000,20],[25000,50],[15000,30],[20000,50]];
+ addMoney(rewards[i][0]);
+ addXP(rewards[i][1]);
+ claimedQuests.push(i);
+ log("🏆 Получена награда за задание");
+ render();
+}
+
+function renderStats(){
+ let animals=Object.values(state.animals).reduce((a,b)=>a+b.count,0);
+ let harvest=(state.wheat+state.corn+state.sunflower+state.potato);
+ document.getElementById("statsCards").innerHTML=`
+ <div class="card"><h3>💰 Всего заработано</h3><div class="stat gold">${fmt(state.totalEarned)} ₽</div></div>
+ <div class="card"><h3>📦 Продано</h3><div class="stat">${fmt(state.totalSold)} ₽</div></div>
+ <div class="card"><h3>🌾 Урожай</h3><div class="stat">${harvest.toFixed(1)} т</div></div>
+ <div class="card"><h3>🐄 Животные</h3><div class="stat">${animals}</div></div>
+ <div class="card"><h3>🚜 Техника</h3><div class="stat">${state.vehicles.filter(x=>x.owned).length}</div></div>
+ <div class="card"><h3>📅 Дней прошло</h3><div class="stat">${state.day}</div></div>
+ <div class="card"><h3>⭐ Репутация</h3><div class="stat">${state.reputation}</div></div>
+ `;
+}
+
+function render(){
+ document.getElementById("moneyText").textContent=fmt(state.money)+" ₽";
+ document.getElementById("homeMoney").textContent=fmt(state.money)+" ₽";
+ document.getElementById("dayText").textContent="День "+state.day;
+ document.getElementById("timeText").textContent=String(state.hour).padStart(2,"0")+":00";
+ document.getElementById("rep").textContent=state.reputation;
+ document.getElementById("level").textContent=state.level;
+ let need=state.level*100;
+ document.getElementById("xpText").textContent=state.xp+" / "+need+" XP";
+ document.getElementById("xpBar").style.width=Math.min(100,state.xp/need*100)+"%";
+
+ document.getElementById("seasonText").textContent=state.season;
+ document.getElementById("dateText").textContent=state.seasonDay+" день сезона";
+ document.getElementById("weatherIcon").textContent=weather[0];
+ document.getElementById("weatherName").textContent=weather[1];
+ document.getElementById("weatherInfo").textContent=weather[2];
+
+ document.getElementById("wheat").textContent=state.wheat.toFixed(1)+" т";
+ document.getElementById("corn").textContent=state.corn.toFixed(1)+" т";
+ document.getElementById("sunflower").textContent=state.sunflower.toFixed(1)+" т";
+ document.getElementById("potato").textContent=state.potato.toFixed(1)+" т";
+
+ document.getElementById("totalArea").textContent=state.hectares+" га";
+ document.getElementById("freeArea").textContent=(state.hectares-state.usedHectares).toFixed(1)+" га";
+
+ renderFields();
+ renderAnimals();
+ renderVehicles();
+ renderShop();
+ renderMarket();
+ renderWorkers();
+ renderQuests();
+ renderStats();
+}
+
+function saveGame(silent=false){
+ localStorage.setItem("farmerSimulatorSave",JSON.stringify({
+  state,
+  claimedQuests,
+  weather
+ }));
+ if(!silent){
+  toast("💾 Игра сохранена");
+  log("💾 Игра сохранена");
+ }
+}
+
+function loadGame(){
+ let raw=localStorage.getItem("farmerSimulatorSave");
+ if(!raw){
+  toast("Сохранение не найдено");
+  return;
+ }
+ try{
+  let d=JSON.parse(raw);
+  state=d.state;
+  claimedQuests=d.claimedQuests||[];
+  weather=d.weather||weatherTypes[0];
+  render();
+  log("📂 Сохранение загружено");
+  toast("Загрузка завершена");
+ }catch(e){
+  toast("Ошибка сохранения");
+ }
+}
+
+function resetGame(){
+ if(!confirm("Начать новую ферму? Старое сохранение будет удалено."))return;
+ localStorage.removeItem("farmerSimulatorSave");
+ state=JSON.parse(JSON.stringify(defaultState));
+ claimedQuests=[];
+ weather=weatherTypes[0];
+ document.getElementById("log").innerHTML="";
+ log("🌱 Добро пожаловать на новую ферму!");
+ render();
+}
+
+document.addEventListener("visibilitychange",()=>{
+ if(document.hidden)saveGame(true);
+});
+
+log("🌱 Добро пожаловать, фермер!");
+log("🚜 В гараже тебя ждёт МТЗ-82.");
+log("💰 Стартовый капитал: 250 000 ₽.");
+render();
+</script>
+
+</body>
+</html>
